@@ -8,6 +8,8 @@ import { AuthDto } from './dto';
 import * as argon from 'argon2';
 import { User } from '@prisma/client'; // ✅ correct import
 import { PrismaClientKnownRequestError } from 'generated/prisma/runtime/library';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 interface SignUpResponse {
   id: string;
@@ -19,7 +21,11 @@ interface SignUpResponse {
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwt: JwtService,
+    private readonly config: ConfigService,
+  ) {}
 
   async signup(dto: AuthDto) {
     try {
@@ -48,7 +54,11 @@ export class AuthService {
       console.log('Created user:', newUser);
       // newUser.password = undefined;
 
-      return newUser;
+      // return newUser;
+      return this.signToken(
+        newUser.id,
+        newUser.email,
+      ); /* Return JWT token instead of user object */
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -79,11 +89,31 @@ export class AuthService {
       }
       console.log('Signed in user:', existingUser);
       // existingUser.password = undefined;
-      return existingUser;
+      // return existingUser;
+      return this.signToken(
+        existingUser.id,
+        existingUser.email,
+      ); /* Return JWT token instead of user object */
     } catch (error) {
       console.log('Error in signin service:', error);
       throw error;
     }
-    return { msg: 'I am Signin' };
+  }
+
+  async signToken(
+    userId: string,
+    email: string,
+  ): Promise<{ access_token: string }> {
+    const payload = { sub: userId, email };
+    const secret = this.config.get('JWT_SECRET') || 'vishal';
+
+    const token = await this.jwt.signAsync(payload, {
+      expiresIn: '15m',
+      secret: secret,
+    });
+
+    return {
+      access_token: token,
+    };
   }
 }
