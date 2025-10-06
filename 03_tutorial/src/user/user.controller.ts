@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { JwtGuard } from 'src/common/guard';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Controller('users')
@@ -14,9 +16,12 @@ export class UserController {
     return users;
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(JwtGuard)
   @Get('me')
-  getMe() {
+  getMe(@Get() req: Request) {
+    console.log({
+      user: req.user,
+    });
     return { msg: 'This is a protected route' };
   }
 }
